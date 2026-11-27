@@ -1,5 +1,5 @@
 /**
- * Topic icons and question diagrams (weight, time, parallel lines, quadrilaterals).
+ * Topic icons and question diagrams (weight, time, parallel lines, quadrilaterals, triangles).
  */
 (function (global) {
   'use strict';
@@ -30,6 +30,13 @@
       '<circle cx="24" cy="14" r="2.2" class="ti-dot"/>' +
       '<line x1="12" y1="24" x2="36" y2="24" class="ti-cross"/>' +
       '<circle cx="24" cy="34" r="2.2" class="ti-dot"/>',
+    brackets:
+      '<circle cx="24" cy="24" r="20" class="ti-bg"/>' +
+      '<text x="24" y="30" text-anchor="middle" class="ti-tiny" style="font-size:18px;font-weight:800">( )</text>',
+    muladd:
+      '<circle cx="24" cy="24" r="20" class="ti-bg"/>' +
+      '<path d="M12 18 L20 26 M20 18 L12 26" class="ti-cross"/>' +
+      '<path d="M31 17 L31 27 M26 22 L36 22" class="ti-cross"/>',
     weight:
       '<circle cx="24" cy="24" r="20" class="ti-bg"/>' +
       '<polygon points="24,12 20,20 28,20" class="ti-shape"/>' +
@@ -50,7 +57,10 @@
       '<path d="M20 30 l3 -3 l0 6 z" class="ti-bar"/>',
     para:
       '<circle cx="24" cy="24" r="20" class="ti-bg"/>' +
-      '<polygon points="14,32 30,32 36,16 20,16" class="ti-shape"/>'
+      '<polygon points="14,32 30,32 36,16 20,16" class="ti-shape"/>',
+    triangle:
+      '<circle cx="24" cy="24" r="20" class="ti-bg"/>' +
+      '<polygon points="24,12 12,34 36,34" class="ti-shape"/>'
   };
 
   function topicIcon(id) {
@@ -85,7 +95,6 @@
     return '<span class="time-digital" role="math" aria-label="' + esc(t) + '">' + esc(t) + '</span>';
   }
 
-  /** Stacked 時 / 分 readout — same idea as stacked fractions, for 24-hour time. */
   function timeStack(h, m) {
     var hh = pad2(h);
     var mm = pad2(m);
@@ -161,10 +170,6 @@
     return wrap(svg, '電子鐘 ' + t, 'q-diagram--lcd');
   }
 
-  /**
-   * tilt: 'left' | 'right' | 'equal' | 'ask'
-   * leftText / rightText are plain labels.
-   */
   function balance(leftText, rightText, tilt) {
     var angle = tilt === 'left' ? -8 : tilt === 'right' ? 8 : 0;
     var qMark = tilt === 'ask' ? '<text x="160" y="28" text-anchor="middle" class="bal-q">?</text>' : '';
@@ -185,7 +190,6 @@
     return wrap(svg, aria, 'q-diagram--balance');
   }
 
-  /** Pointer scale. value is the reading; max and step describe ticks. */
   function scale(value, max, step, unitLabel) {
     var x0 = 36, x1 = 284, y = 78;
     var ticks = '';
@@ -216,7 +220,6 @@
     return s;
   }
 
-  /** Custom-unit balance: equal blocks, optional tilt. */
   function balanceBlocks(leftCount, rightCount, tilt) {
     var angle = tilt === 'left' ? -8 : tilt === 'right' ? 8 : 0;
     var svg =
@@ -234,7 +237,6 @@
     return wrap(svg, '天平左邊 ' + leftCount + ' 個砝碼，右邊 ' + rightCount + ' 個砝碼', 'q-diagram--balance');
   }
 
-  var uid = 0;
   function arrowOn(x1, y1, x2, y2, doubleMark) {
     var mx = (x1 + x2) / 2;
     var my = (y1 + y2) / 2;
@@ -245,7 +247,6 @@
       '<path d="' + d + '" fill="none" stroke="#b45309" stroke-width="2.4" stroke-linejoin="round"/>' + extra + '</g>';
   }
 
-  /** Two lines: parallel (h / slant) or intersecting. */
   function linePair(mode) {
     var body = '';
     var aria = '兩條直線';
@@ -282,7 +283,6 @@
     return wrap(body, aria);
   }
 
-  /** Equal-distance markers between two horizontal lines. */
   function parallelDistance(equal) {
     var y2 = equal ? 118 : 132;
     var gapLabel = equal ? '3 cm' : '5 cm';
@@ -334,9 +334,6 @@
     return 0;
   }
 
-  /**
-   * opts: { letters, highlight:[sideIndex], arrows, lengths:{sideIndex:text}, mini, name }
-   */
   function shapeSvg(kind, opts) {
     opts = opts || {};
     var pts = SHAPES[kind];
@@ -388,6 +385,99 @@
       (caption ? '<span class="shape-card__name">' + esc(caption) + '</span>' : '') + '</span>';
   }
 
+  /**
+   * 3S2 三角形 SVG 繪圖：支援等邊、等腰、直角、等腰直角、不等邊，
+   * 附帶旋轉角度、邊長標註及直角符號 ┐，避免純靠目測猜測。
+   */
+  function triangleSvg(kind, opts) {
+    opts = opts || {};
+    var rot = opts.rotate || 0;
+    var rad = rot * Math.PI / 180;
+    var cx = 160, cy = 84;
+
+    function rotPt(x, y) {
+      var dx = x - cx, dy = y - cy;
+      return [
+        Math.round((cx + dx * Math.cos(rad) - dy * Math.sin(rad)) * 10) / 10,
+        Math.round((cy + dx * Math.sin(rad) + dy * Math.cos(rad)) * 10) / 10
+      ];
+    }
+
+    var specs = {
+      equilateral: {
+        pts: [[160, 34], [116, 110], [204, 110]],
+        labels: ['6 cm', '6 cm', '6 cm'],
+        rightIdx: -1,
+        aria: '等邊三角形，三條邊都是 6 cm'
+      },
+      isosceles: {
+        pts: [[160, 28], [126, 116], [194, 116]],
+        labels: ['7 cm', '4 cm', '7 cm'],
+        rightIdx: -1,
+        aria: '等腰三角形，兩條邊是 7 cm，底邊是 4 cm'
+      },
+      right: {
+        pts: [[112, 42], [112, 114], [208, 114]],
+        labels: ['5 cm', '7 cm', '9 cm'],
+        rightIdx: 1,
+        aria: '直角三角形，三邊分別為 5 cm、7 cm、9 cm，有一個直角'
+      },
+      iso_right: {
+        pts: [[124, 42], [124, 114], [196, 114]],
+        labels: ['6 cm', '6 cm', '8 cm'],
+        rightIdx: 1,
+        aria: '等腰直角三角形，兩條直角邊都是 6 cm，斜邊 8 cm'
+      },
+      scalene: {
+        pts: [[108, 46], [198, 38], [182, 116]],
+        labels: ['7 cm', '6 cm', '9 cm'],
+        rightIdx: -1,
+        aria: '不等邊三角形，三邊分別為 7 cm、6 cm、9 cm'
+      }
+    };
+
+    var sp = specs[kind] || specs.equilateral;
+    var pts = sp.pts.map(function (p) { return rotPt(p[0], p[1]); });
+    var poly = pts.map(function (p) { return p[0] + ',' + p[1]; }).join(' ');
+    var body = '<polygon points="' + poly + '" class="shape-fill"/>';
+
+    for (var i = 0; i < 3; i++) {
+      var p = pts[i], q = pts[(i + 1) % 3];
+      body += '<line x1="' + p[0] + '" y1="' + p[1] + '" x2="' + q[0] + '" y2="' + q[1] + '" class="geo-line"/>';
+      if (opts.showMarks !== false) {
+        var mx = (p[0] + q[0]) / 2;
+        var my = (p[1] + q[1]) / 2;
+        var dx = mx - cx, dy = my - cy;
+        var dlen = Math.sqrt(dx * dx + dy * dy) || 1;
+        var lx = Math.round(mx + (dx / dlen) * 20);
+        var ly = Math.round(my + (dy / dlen) * 18 + 4);
+        body += '<text x="' + lx + '" y="' + ly + '" text-anchor="middle" class="geo-dim-text">' + esc(sp.labels[i]) + '</text>';
+      }
+    }
+
+    if (sp.rightIdx >= 0 && opts.showMarks !== false) {
+      var v = pts[sp.rightIdx];
+      var pPrev = pts[(sp.rightIdx + 2) % 3];
+      var pNext = pts[(sp.rightIdx + 1) % 3];
+      function unit(a, b) {
+        var vx = b[0] - a[0], vy = b[1] - a[1];
+        var l = Math.sqrt(vx * vx + vy * vy) || 1;
+        return [vx / l, vy / l];
+      }
+      var u1 = unit(v, pPrev);
+      var u2 = unit(v, pNext);
+      var sz = 12;
+      var r1 = [v[0] + u1[0] * sz, v[1] + u1[1] * sz];
+      var r2 = [v[0] + u1[0] * sz + u2[0] * sz, v[1] + u1[1] * sz + u2[1] * sz];
+      var r3 = [v[0] + u2[0] * sz, v[1] + u2[1] * sz];
+      body += '<polyline points="' + r1[0].toFixed(1) + ',' + r1[1].toFixed(1) + ' ' +
+        r2[0].toFixed(1) + ',' + r2[1].toFixed(1) + ' ' +
+        r3[0].toFixed(1) + ',' + r3[1].toFixed(1) + '" fill="none" stroke="#b45309" stroke-width="2.4"/>';
+    }
+
+    return wrap(body, sp.aria, 'q-diagram--triangle');
+  }
+
   global.Diagrams = {
     topicIcon: topicIcon,
     feedbackIcon: feedbackIcon,
@@ -409,6 +499,7 @@
     isParallelogramKind: isParallelogramKind,
     sidesParallel: sidesParallel,
     parallelPairCount: parallelPairCount,
-    SHAPE_NAMES: SHAPE_NAMES
+    SHAPE_NAMES: SHAPE_NAMES,
+    triangleSvg: triangleSvg
   };
 })(typeof window !== 'undefined' ? window : globalThis);

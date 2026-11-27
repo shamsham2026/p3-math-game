@@ -9,9 +9,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="小三數學競技場" />
   <meta name="format-detection" content="telephone=no" />
-  <meta name="description" content="香港小三數學競技場——乘法、除法、重量、24小時報時制、平行線、平行四邊形；隨機出題、限時計分、雙人對賽。" />
+  <meta name="description" content="香港小三數學競技場——乘法、除法、圓括號、乘加乘減、重量、24小時報時制、平行線、平行四邊形、三角形；隨機出題、限時計分、雙人對賽。" />
   <title>小三數學競技場</title>
   <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/enhancements.css" />
 </head>
 <body class="ipad-ready">
   <div class="app">
@@ -30,30 +31,35 @@
       <div id="home-art"></div>
 
       <div class="card">
-        <h2 class="section-title">選擇課題</h2>
-        <div class="topic-grid" role="group" aria-label="課題">
+        <h2 class="section-title">選擇課題（9 個小三課題）</h2>
+        <div class="topic-grid topic-grid--9" role="group" aria-label="課題">
           <button type="button" class="topic-btn selected" data-topic="mul"><span class="icon-slot" data-icon="mul"></span><span class="name">乘法</span></button>
           <button type="button" class="topic-btn" data-topic="div"><span class="icon-slot" data-icon="div"></span><span class="name">除法</span></button>
+          <button type="button" class="topic-btn" data-topic="brackets"><span class="icon-slot" data-icon="brackets"></span><span class="name">圓括號</span></button>
+          <button type="button" class="topic-btn" data-topic="muladd"><span class="icon-slot" data-icon="muladd"></span><span class="name">乘加／乘減</span></button>
           <button type="button" class="topic-btn" data-topic="weight"><span class="icon-slot" data-icon="weight"></span><span class="name">重量</span></button>
           <button type="button" class="topic-btn" data-topic="time24"><span class="icon-slot" data-icon="time24"></span><span class="name">24小時報時制</span></button>
           <button type="button" class="topic-btn" data-topic="parallel"><span class="icon-slot" data-icon="parallel"></span><span class="name">平行線</span></button>
           <button type="button" class="topic-btn" data-topic="para"><span class="icon-slot" data-icon="para"></span><span class="name">平行四邊形</span></button>
+          <button type="button" class="topic-btn" data-topic="triangle"><span class="icon-slot" data-icon="triangle"></span><span class="name">三角形</span></button>
         </div>
 
-        <h2 class="section-title">模式</h2>
-        <div class="row">
-          <div class="chip-group" role="group" aria-label="模式">
-            <button type="button" class="chip selected" data-mode="solo">單人練習</button>
-            <button type="button" class="chip" data-mode="versus">雙人對賽</button>
+        <div class="setup-bar">
+          <div class="setup-group">
+            <h2 class="section-title">模式</h2>
+            <div class="chip-group" role="group" aria-label="模式">
+              <button type="button" class="chip selected" data-mode="solo">單人練習</button>
+              <button type="button" class="chip" data-mode="versus">雙人對賽</button>
+            </div>
           </div>
-        </div>
 
-        <h2 class="section-title">難度</h2>
-        <div class="row">
-          <div class="chip-group" role="group" aria-label="難度">
-            <button type="button" class="chip" data-diff="easy">簡易</button>
-            <button type="button" class="chip selected" data-diff="normal">普通</button>
-            <button type="button" class="chip" data-diff="hard">挑戰</button>
+          <div class="setup-group">
+            <h2 class="section-title">難度</h2>
+            <div class="chip-group" role="group" aria-label="難度">
+              <button type="button" class="chip" data-diff="easy">簡易</button>
+              <button type="button" class="chip selected" data-diff="normal">普通</button>
+              <button type="button" class="chip" data-diff="hard">挑戰</button>
+            </div>
           </div>
         </div>
 
@@ -71,7 +77,7 @@
       </div>
 
       <p class="home-footer">
-        跟隨「小芽」闖關：答對就跑、跳、飛！快過目標秒數先算連擊。乘法同除法用輸入框作答，有餘數就填商和餘。進度存於 localStorage。
+        跟隨「小芽」闖關：答對就跑、跳、飛！單人練習答錯 3 次會自動開啟「小芽引導小問題」一步一步陪你拆解。進度存於 localStorage。
       </p>
     </section>
 
@@ -126,7 +132,7 @@
             <div class="logo-badge" aria-hidden="true">三</div>
             <div>
               <h1 style="font-size:1.1rem">作答中</h1>
-              <p>專心諗，快啲答！</p>
+              <p>專心諗，細心計！</p>
             </div>
           </div>
           <button type="button" class="icon-btn" id="btn-quit">退出</button>
@@ -178,7 +184,7 @@
           <button type="button" class="icon-btn vs-quit" id="btn-quit-vs" title="退出">退出</button>
           <div id="vs-center-root" class="vs-center-root"></div>
           <div class="vs-mid-hint">同一題 · 搶答！誰先答對就過題</div>
-          <button type="button" class="btn btn-primary vs-next-btn" id="btn-vs-next" hidden>下一題 →</button>
+          <button type="button" class="btn btn-primary vs-next-btn" id="btn-vs-next" hidden>下一題 ↴</button>
         </div>
 
         <div class="vs-bottom vs-panel" id="vs-panel-b">
@@ -211,6 +217,7 @@
         <div id="end-body"></div>
         <div class="row actions" style="margin-top:1.25rem;gap:.75rem">
           <button type="button" class="btn btn-primary" id="btn-rematch">再來一局</button>
+          <button type="button" class="btn btn-good" id="btn-retry-mistakes" hidden>只練錯題</button>
           <button type="button" class="btn btn-ghost" id="btn-home">返回主頁</button>
         </div>
       </div>
@@ -227,10 +234,13 @@
   <script src="js/generators/helpers.js"></script>
   <script src="js/generators/multiplication.js"></script>
   <script src="js/generators/division.js"></script>
+  <script src="js/generators/brackets.js"></script>
+  <script src="js/generators/muladd.js"></script>
   <script src="js/generators/weight.js"></script>
   <script src="js/generators/time24.js"></script>
   <script src="js/generators/parallel.js"></script>
   <script src="js/generators/parallelogram.js"></script>
+  <script src="js/generators/triangle.js"></script>
   <script src="js/generators/index.js"></script>
   <script src="js/game.js"></script>
   <script src="js/app.js"></script>

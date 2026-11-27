@@ -1,19 +1,33 @@
 /**
  * Game session state machine.
- * Versus = simultaneous race (same question, independent answers).
+ * - Versus = simultaneous race (same question, independent answers).
+ * - Solo = supports 3-wrong-answer scaffolding ("答錯三次觸發引導性問題").
  */
 (function (global) {
   'use strict';
 
-  var TARGET_SEC = { mul: 8, div: 10, weight: 12, time24: 10, parallel: 8, para: 10 };
+  var TARGET_SEC = {
+    mul: 8,
+    div: 10,
+    brackets: 12,
+    muladd: 12,
+    weight: 12,
+    time24: 10,
+    parallel: 8,
+    para: 10,
+    triangle: 10
+  };
 
   var HINTS = {
     mul: '用直式對齊數位，記得進位。',
     div: '除數是一位數；餘數一定細過除數。',
+    brackets: '見到圓括號 ( )，一定要先算括號入面的部分！',
+    muladd: '乘加、乘減混合計算要「先乘後加減」，唔好由左至右亂算！',
     weight: '1 公斤 = 1000 克，先換成同一單位再比較。',
     time24: '下午加 12；午夜是 00:00，正午是 12:00。',
     parallel: '平行線不相交，而且距離處處相等。',
-    para: '兩組對邊分別平行。正方形同長方形都係平行四邊形。'
+    para: '兩組對邊分別平行。正方形同長方形都係平行四邊形。',
+    triangle: '先睇邊長有幾多條相等，再睇有冇直角符號。'
   };
 
   function targetSeconds(topic, difficulty) {
@@ -49,12 +63,15 @@
     if (diff === 'easy') seconds = Math.round(seconds * 1.25);
     if (diff === 'hard') seconds = Math.round(seconds * 0.85);
 
-    var questions = global.Topics.generateRound(topic, count, diff);
+    var questions = Array.isArray(opts.customQuestions) && opts.customQuestions.length
+      ? opts.customQuestions.slice()
+      : global.Topics.generateRound(topic, count, diff);
 
     return {
       topic: topic,
       mode: mode,
       difficulty: diff,
+      isReviewMode: !!(opts.customQuestions && opts.customQuestions.length),
       questions: questions,
       index: 0,
       secondsTotal: seconds,
@@ -64,13 +81,14 @@
         : [blankPlayer('你')],
       currentPlayer: 0,
       answered: false,
-      /** Versus: per-player lock for current question [bool, bool] */
+      wrongAttempts: 0,
+      pacePaused: false,
+      guideTriggered: false,
       sideAnswered: [false, false],
       sideCorrect: [null, null],
       questionWon: false,
       finished: false,
       lastCorrect: null,
-      /** One shared question object per round index — both sides read this. */
       questionStartedAt: Date.now(),
       reviews: []
     };
@@ -79,6 +97,9 @@
   function stampQuestion(session) {
     session.questionStartedAt = Date.now();
     session.lockedElapsedMs = null;
+    session.wrongAttempts = 0;
+    session.pacePaused = false;
+    session.guideTriggered = false;
     return session;
   }
 
@@ -133,15 +154,34 @@
     return (Math.max(0, ms) / 1000).toFixed(1);
   }
 
-  /**
-   * Fast = within the topic target: streak +1, +2, and combo +1 once streak ≥ 3.
-   * Slow = correct but over target: base points only, streak unchanged.
-   * Wrong = streak reset.
-   */
+  function recordReview(session, player, q, raw) {
+    // 避免同一題重試多次重複寫入錯題列表
+    var exists = session.reviews.some(function (r) {
+      return r.index === session.index && r.playerIndex === session.players.indexOf(player);
+    });
+    if (exists) return;
+    session.reviews.push({
+      index: session.index,
+      topic: q.topic,
+      playerIndex: session.players.indexOf(player),
+      question: q,
+      promptHtml: q.promptHtml,
+      given: raw,
+      answer: q.answer,
+      answerHtml: q.answerHtml || '',
+      hint: (q.guide && q.guide.explainHtml)
+        ? q.guide.explainHtml.replace(/<[^>]+>/g, '')
+        : (HINTS[q.topic] || '再睇一次題目。'),
+      pairs: tablePairs(q)
+    });
+  }
+
   function grade(session, player, q, raw, ok, speedBonus) {
     var ms = elapsedMs(session);
     var limit = targetMs(session.topic, session.difficulty);
-    var pace = ok ? (ms <= limit ? 'fast' : 'slow') : 'wrong';
+    // 若曾答錯重試或觸發引導題，不計入快速連擊
+    var hadRetry = session.wrongAttempts > 0 || session.guideTriggered;
+    var pace = ok ? ((ms <= limit && !hadRetry) ? 'fast' : 'slow') : 'wrong';
     var fastBonus = 0;
     var comboExtra = 0;
     var raceBonus = 0;
@@ -171,17 +211,7 @@
     } else {
       player.wrong += 1;
       player.streak = 0;
-      session.reviews.push({
-        index: session.index,
-        topic: q.topic,
-        playerIndex: session.players.indexOf(player),
-        promptHtml: q.promptHtml,
-        given: raw,
-        answer: q.answer,
-        answerHtml: q.answerHtml || '',
-        hint: HINTS[q.topic] || '再睇一次題目。',
-        pairs: tablePairs(q)
-      });
+      recordReview(session, player, q, raw);
     }
     return {
       pace: pace,
@@ -194,7 +224,9 @@
     };
   }
 
-  /** Solo (or legacy): submit for currentPlayer */
+  /**
+   * Solo: 答錯第 1、2 次允許重試；第 3 次答錯觸發「引導性問題」並暫停目標計時條。
+   */
   function submitAnswer(session, raw) {
     if (session.mode === 'versus') {
       return submitVersus(session, session.currentPlayer, raw);
@@ -204,32 +236,112 @@
     if (!q) return null;
     var ok = evaluateRaw(q, raw);
     var p = currentPlayer(session);
+
+    if (ok) {
+      session.answered = true;
+      session.lastCorrect = true;
+      var gradedOk = grade(session, p, q, raw, true, 0);
+      return {
+        correct: true,
+        answer: q.answer,
+        player: p,
+        playerIndex: session.currentPlayer,
+        attempts: session.wrongAttempts,
+        triggerGuide: false,
+        pace: gradedOk.pace,
+        elapsedMs: gradedOk.elapsedMs,
+        targetMs: gradedOk.targetMs,
+        fastBonus: gradedOk.fastBonus,
+        comboExtra: gradedOk.comboExtra,
+        pairs: gradedOk.pairs
+      };
+    }
+
+    // 答錯處理
+    session.wrongAttempts += 1;
+    session.lastCorrect = false;
+    p.streak = 0;
+
+    if (session.wrongAttempts < 3) {
+      // 第 1、2 次答錯：記錄錯題預覽但不鎖題，讓學生再試
+      recordReview(session, p, q, raw);
+      return {
+        correct: false,
+        answer: q.answer,
+        player: p,
+        playerIndex: session.currentPlayer,
+        attempts: session.wrongAttempts,
+        remainingAttempts: 3 - session.wrongAttempts,
+        triggerGuide: false,
+        finalFail: false,
+        pace: 'wrong',
+        elapsedMs: elapsedMs(session),
+        targetMs: targetMs(session.topic, session.difficulty),
+        fastBonus: 0,
+        comboExtra: 0,
+        pairs: tablePairs(q)
+      };
+    }
+
+    if (session.wrongAttempts === 3 && !session.guideTriggered) {
+      // 第 3 次答錯：觸發引導性問題，暫停目標計時條
+      session.guideTriggered = true;
+      session.pacePaused = true;
+      recordReview(session, p, q, raw);
+      return {
+        correct: false,
+        answer: q.answer,
+        player: p,
+        playerIndex: session.currentPlayer,
+        attempts: session.wrongAttempts,
+        remainingAttempts: 0,
+        triggerGuide: true,
+        finalFail: false,
+        pace: 'wrong',
+        elapsedMs: elapsedMs(session),
+        targetMs: targetMs(session.topic, session.difficulty),
+        fastBonus: 0,
+        comboExtra: 0,
+        pairs: tablePairs(q)
+      };
+    }
+
+    // 引導後再次答錯：結束此題並顯示正解
     session.answered = true;
-    session.lastCorrect = ok;
-    var graded = grade(session, p, q, raw, ok, 0);
+    var gradedFail = grade(session, p, q, raw, false, 0);
     return {
-      correct: ok,
+      correct: false,
       answer: q.answer,
       player: p,
       playerIndex: session.currentPlayer,
-      pace: graded.pace,
-      elapsedMs: graded.elapsedMs,
-      targetMs: graded.targetMs,
-      fastBonus: graded.fastBonus,
-      comboExtra: graded.comboExtra,
-      pairs: graded.pairs
+      attempts: session.wrongAttempts,
+      remainingAttempts: 0,
+      triggerGuide: false,
+      finalFail: true,
+      pace: gradedFail.pace,
+      elapsedMs: gradedFail.elapsedMs,
+      targetMs: gradedFail.targetMs,
+      fastBonus: 0,
+      comboExtra: 0,
+      pairs: gradedFail.pairs
     };
   }
 
-  /**
-   * Versus 搶答: playerIndex 0 = top (A), 1 = bottom (B).
-   * First CORRECT wins the question (+30), advances immediately (UI).
-   * Wrong locks that side only; other may still 搶答.
-   */
+  function revealAndFinishQuestion(session) {
+    if (!session || session.answered) return;
+    var q = currentQuestion(session);
+    var p = currentPlayer(session);
+    session.answered = true;
+    session.lastCorrect = false;
+    p.wrong += 1;
+    p.streak = 0;
+    if (q) recordReview(session, p, q, '');
+  }
+
   function submitVersus(session, playerIndex, raw) {
     if (session.finished) return null;
-    if (session.questionWon) return null; // already advancing
-    if (session.sideAnswered[playerIndex]) return null; // locked after wrong (or done)
+    if (session.questionWon) return null;
+    if (session.sideAnswered[playerIndex]) return null;
     var q = currentQuestion(session);
     if (!q) return null;
 
@@ -281,6 +393,9 @@
     if (session.finished) return session;
     session.answered = false;
     session.lastCorrect = null;
+    session.wrongAttempts = 0;
+    session.pacePaused = false;
+    session.guideTriggered = false;
     session.sideAnswered = [false, false];
     session.sideCorrect = [null, null];
     session.questionWon = false;
@@ -318,7 +433,6 @@
     return pct;
   }
 
-  /** none | bad | slow | good | blazing */
   function heatTone(stat, targetSec) {
     if (!stat || !stat.attempts) return 'none';
     var wrong = stat.attempts - stat.correct;
@@ -392,6 +506,7 @@
     currentQuestion: currentQuestion,
     currentPlayer: currentPlayer,
     submitAnswer: submitAnswer,
+    revealAndFinishQuestion: revealAndFinishQuestion,
     submitVersus: submitVersus,
     bothSidesDone: bothSidesDone,
     next: next,
@@ -406,6 +521,7 @@
     masteryBand: masteryBand,
     tablePairs: tablePairs,
     formatSeconds: formatSeconds,
-    TARGET_SEC: TARGET_SEC
+    TARGET_SEC: TARGET_SEC,
+    HINTS: HINTS
   };
 })(typeof window !== 'undefined' ? window : globalThis);

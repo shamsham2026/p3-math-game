@@ -1,0 +1,163 @@
+/* 小三數學競技場 - 介面改良與引導卡片樣式 */
+
+/* 1. 主頁 9 課題整齊格線與選項並排 */
+.topic-grid--9 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+@media (max-width: 600px) {
+  .topic-grid--9 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.topic-btn {
+  transition: transform 0.14s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.topic-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(14, 165, 233, 0.16);
+}
+
+.topic-btn.selected {
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.25), 0 6px 16px rgba(14, 165, 233, 0.18);
+}
+
+.setup-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.75rem;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px dashed var(--card-border);
+}
+
+.setup-group .section-title {
+  margin-top: 0;
+  margin-bottom: 0.45rem;
+}
+
+/* 2. 作答區閱讀性與觸控防誤觸優化 */
+.q-expr {
+  font-size: clamp(1.45rem, 3.2vw, 2rem);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  margin: 0.6rem 0;
+}
+
+.q-word {
+  font-size: clamp(1.1rem, 2.3vw, 1.28rem);
+  line-height: 1.65;
+}
+
+.btn-submit-lg {
+  min-width: 104px;
+  padding: 0.7rem 1.35rem;
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+
+.numpad.show {
+  margin-top: 0.75rem;
+  gap: 0.55rem;
+}
+
+/* 3. 小芽引導小問題卡片（答錯 3 次觸發） */
+.guide-card {
+  margin-top: 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, #fefce8 0%, #ecfdf5 100%);
+  border: 2px solid #86efac;
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.12);
+  animation: guideSlideIn 0.25s ease-out;
+}
+
+@keyframes guideSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.guide-card__head {
+  font-weight: 800;
+  font-size: 1.02rem;
+  color: #065f46;
+  margin-bottom: 0.45rem;
+}
+
+.guide-card__prompt {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.guide-card__input-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.guide-input {
+  max-width: 170px;
+  background: #ffffff;
+}
+
+.guide-card__choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.55rem;
+}
+
+.guide-choice-btn {
+  background: #ffffff;
+  font-size: 0.96rem;
+  padding: 0.6rem 0.75rem;
+}
+
+.guide-card__result {
+  display: none;
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  font-size: 0.98rem;
+  line-height: 1.5;
+}
+
+.guide-card__result.show {
+  display: block;
+}
+
+.guide-card__result.ok {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+
+.guide-card__result.explain {
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.guide-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.guide-card--done {
+  opacity: 0.75;
+}
+
+/* 4. 三角形 SVG 標註可讀性 */
+.q-diagram--triangle .geo-dim-text {
+  font-weight: 700;
+  fill: #0f2942;
+}
