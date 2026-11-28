@@ -57,7 +57,7 @@
   }
 
   function genNotPara() {
-    var no = U.pick(NONS);
+    var no = 'trap'; // 提示講明是梯形：對照項必須是真正的梯形，不可隨機抽三角形／一般四邊形
     var kinds = U.shuffle(['para', 'rect', 'square', no]);
     var correctIndex = kinds.indexOf(no);
     var choices = kinds.map(function (k, i) {
