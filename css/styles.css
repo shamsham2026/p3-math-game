@@ -1768,8 +1768,7 @@ body:has(#screen-play.active) {
   height: auto;
   object-fit: contain;
   display: block;
-  border-radius: 16px;
-  background: #fff;
+  background: transparent;
 }
 .bean-brief, .bean-end, .bean-home { width: 108px; }
 .bean-frame--sad .bean-img { filter: grayscale(1); }
