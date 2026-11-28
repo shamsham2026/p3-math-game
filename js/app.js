@@ -152,7 +152,7 @@
       var when = new Date(last.at || Date.now());
       lastEl.textContent = '上次：' + topicName(last.topic) + ' · ' +
         (last.score != null ? last.score + ' 分' : '') +
-        ' · ' + when.toLocaleString('zh-HK', { timeZone: 'Asia/Hong_HK' });
+        ' · ' + when.toLocaleString('zh-HK', { timeZone: 'Asia/Hong_Kong' });
     } else {
       lastEl.textContent = '尚未有對局紀錄';
     }
