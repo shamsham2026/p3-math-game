@@ -38,8 +38,8 @@
 
   function beanFile(who, pose) {
     var wave = pose === 'cheer' || pose === 'jump' || pose === 'fly' || pose === 'soar';
-    if (who === 'girl') return wave ? 'assets/girl-u-b.jpg' : 'assets/girl-u-a.jpg';
-    return wave ? 'assets/boy-u-b.jpg' : 'assets/boy-u-a.jpg';
+    if (who === 'girl') return wave ? 'assets/girl-u-b.png' : 'assets/girl-u-a.png';
+    return wave ? 'assets/boy-u-b.png' : 'assets/boy-u-a.png';
   }
 
   /** School-uniform sprout bean. who: boy | girl. Pose picks smile vs wave. */
