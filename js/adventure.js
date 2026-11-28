@@ -153,7 +153,7 @@
       beanImg('boy', 'cheer', 'bean-home') +
       beanImg('girl', 'cheer', 'bean-home') +
       '</span>' +
-      '<div class="home-caption"><strong>滬江人仔 · ' + HERO_NAME + '</strong>：我哋等你一齊嚟闖關！</div>' +
+      '<div class="home-caption">我哋等你一齊嚟闖關！</div>' +
       '</div></div>'
     );
   }
